@@ -146,7 +146,7 @@ def power():
     print("""
             1. Total today sale
             2. Edit menu
-            3. Change balance
+            3. Change User balance
             4. User Data
             5. Change User Password
             6. Delete user
@@ -154,8 +154,185 @@ def power():
             8. Log Out
             """)
 
+    opinion = input("Enter your choice No. :- ")
+    if opinion == "1": Tsale()
+    elif opinion == "2": cmenu()
+    elif opinion == "3": cbalance()
+    elif opinion == "4": alluser()
+    elif opinion == "5": cpassword()
+    elif opinion == "6": delete()
+    elif opinion == "7": pass
+    elif opinion == "8": start()
+    else:
+        print("Invalid choice")
+        power()
 
+#========== Total Sales ==========#
+def Tsale():
+    cursor.execute("SELECT * FROM sale ORDER BY revenue DESC")
+    row = cursor.fetchall()
+    for i in row:
+        print(f"| {i[0]:<3}| {i[1]:<15} | {i[2]:<4} |   {i[3]}   |")
+    cursor.execute("SELECT SUM(revenue) FROM sale")
+    row = cursor.fetchone()
+    print(f"📈Total today sale: {row[0]}")
+    power()
 
+#=========== Edit Menu ===========#
+def cmenu():
+    print("________________________________________")
+    print("                🍴 MENU 🍴              ")
+    print("________________________________________")
+    print("|No. |       Item      |Price|Available|")
+    print("________________________________________")
+    cursor.execute("SELECT * FROM menu")
+    row = cursor.fetchall()
+
+    for i in row:
+        print(f"| {i[0]:<3}| {i[1]:<15} | ₹{i[2]} |   {i[3]}   |")
+    print("_______________________________________")
+
+    while True:
+        choose = input('Enter the item Number to change Or "Done" to exist:- ')
+
+        cursor.execute("SELECT * FROM menu WHERE No =%s", (choose,))
+        if cursor.fetchone():
+            while True:
+                print("""
+                    1. Change the Item name
+                    2. Change the Item price
+                    3. Both of us
+                    4. Change Availability
+                    5. Exits
+                    """)
+                item = input("Enter the choice No. :- ")
+                if item == "1":
+                    ni = input("Enter the new Item Name:- ")
+                    cursor.execute("UPDATE menu SET Item = %s WHERE No = %s", (ni,choose,))
+                    conn.commit()
+                elif item == "2":
+                    np = input("Enter the new Item Price:- ")
+                    cursor.execute("UPDATE menu SET Price = %s WHERE No = %s", (np, choose,))
+                    conn.commit()
+                elif item == "3":
+                    ni = input("Enter the new Item Name:- ")
+                    np = input("Enter the new Item Price:- ")
+                    cursor.execute("UPDATE menu SET Item = %s WHERE No = %s", (ni, choose,))
+                    conn.commit()
+                    cursor.execute("UPDATE menu SET Price = %s WHERE No = %s", (np, choose,))
+                    conn.commit()
+                elif item == "4":
+                    ho = input("Enter the new Item Availability Yes/No:- ")
+                    if ho.lower() == "yes":
+                        cursor.execute("UPDATE menu SET Available = %s WHERE No = %s", ('Yes', choose,))
+                        conn.commit()
+                    elif ho.lower() == "no":
+                        cursor.execute("UPDATE menu SET Available = %s WHERE No = %s", ('No', choose,))
+                        conn.commit()
+                    else:
+                        print("Invalid choice")
+                elif item == "5":
+                    print("________________________________________")
+                    print("                🍴 MENU 🍴              ")
+                    print("________________________________________")
+                    print("|No. |       Item      |Price|Available|")
+                    print("________________________________________")
+                    cursor.execute("SELECT * FROM menu")
+                    row = cursor.fetchall()
+                    for i in row:
+                        print(f"| {i[0]:<3}| {i[1]:<15} | ₹{i[2]} |   {i[3]}   |")
+                    print("_______________________________________")
+                    break
+                else:
+                    print("Invalid choice")
+        elif choose.lower() == "done":
+            power()
+            break
+        else:
+            print("Invalid choice")
+            cmenu()
+
+#=========== Change the user Balance ===========#
+def cbalance():
+    j = input("📧Enter the email:- ")
+    cursor.execute("SELECT * FROM userdata WHERE Email = %s", (j,))
+    row = cursor.fetchone()
+    if row:
+        while True:
+            print(f"💵Available balance: {row[4]}")
+            h = float(input("Enter the new balance:- "))
+            cursor.execute("UPDATE userdata SET Balance = %s WHERE Email = %s", (h,j,))
+            conn.commit()
+            if h < 0:
+                print("Invalid balance balance not in negative")
+            else:
+                cursor.execute("SELECT * FROM userdata WHERE Email = %s", (j,))
+                row = cursor.fetchone()
+                conn.commit()
+                print(f"💵New balance: {row[4]}")
+                power()
+                break
+
+    else:
+        print("Wrong credentials")
+        cbalance()
+
+#========= All User =========#
+def alluser():
+    print("----------------------------------")
+    cursor.execute("SELECT * FROM userdata")
+    row = cursor.fetchall()
+    for i in row:
+        print(f"Username: {i[1] + " " + i[2]}")
+        print(f"Email: {i[0]}")
+        print(f"Balance: {i[4]}")
+        print(f"RB Point: {i[5]}")
+        print("----------------------------------")
+    power()
+
+#=========== Change User Password ===========#
+def cpassword():
+    j = input("📧Enter the email:- ")
+    cursor.execute("SELECT * FROM userdata WHERE Email = %s", (j,))
+    row = cursor.fetchone()
+    if row:
+        jol = input("🔑Enter the new Password:- ")
+        while len(jol) < 8:
+            print("Password too short, please re-enter.")
+            jol = input("🔑Please create a password with a minimum of 8 characters: ")
+        cursor.execute("UPDATE userdata SET user_password = %s WHERE Email = %s", (jol, j,))
+        conn.commit()
+        power()
+    else:
+        print("Wrong credentials")
+        power()
+
+#=========== Delete User Acount ===========#
+def delete():
+    j = input("📧Enter the email:- ")
+    cursor.execute("SELECT * FROM userdata WHERE Email = %s", (j,))
+    row = cursor.fetchone()
+    if row:
+        yag = yagmail.SMTP("recessbites4@gmail.com", "lilg qaim bfgi qjmg")
+        yag.send(to=j, subject="Hello", contents=f"Your Account is Permanently Deleted")
+        cursor.execute("DELETE FROM userdata WHERE Email = %s", (j,))
+        conn.commit()
+        print(f"{j} has been deleted")
+        power()
+    else:
+        print("Wrong credentials")
+        power()
+
+#=========== See Complaint ===========#
+def complaint():
+    print("----------------------------------")
+    cursor.execute("SELECT * FROM complaint")
+    row = cursor.fetchall()
+    for i in row:
+        print(f"Staff: {i[0]}")
+        print(f"Email: {i[1]}")
+        print("----------------------------------")
+    power()
 
 #=========== Main Work ===========#
 def menu():
@@ -179,8 +356,8 @@ def menu():
     elif choice == "5": Cpassword()
     elif choice == "6": Tmoney()
     elif choice == "7": complaint()
-    elif choice == "8": pass
-    elif choice == "9": pass
+    elif choice == "8": rbpoint()
+    elif choice == "9": logout()
     else:
         print("Invalid choice")
         menu()
@@ -218,9 +395,9 @@ def order():
     receipt.append("-" * 43)
 
     while True:
-        order = input('Enter the item Number Or "Done" to exist:- ')
+        orders = input('Enter the item Number Or "Done" to exist:- ')
 
-        if order.lower() == "done":
+        if orders.lower() == "done":
             if bill == 0:
                 menu()
                 ght.clear()
@@ -277,20 +454,21 @@ def order():
 
         quantity = int(input("Enter the Quantity:- "))
 
-        cursor.execute("SELECT * FROM menu WHERE No = %s AND available ='Yes'", (order,))
+        cursor.execute("SELECT * FROM menu WHERE No = %s AND available ='Yes'", (orders,))
         item = cursor.fetchone()
 
         if item:
             ght.append(f"{item[1]:<15} - {item[2]:<5} - Qty {quantity}")
             bill += item[2] * quantity
-            cursor.execute("INSERT INTO sale VALUES (%s, %s,%s,%s,%s)", (current_user,item[1],item[2],quantity,datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')))
+            cursor.execute("INSERT INTO orders VALUES (%s, %s,%s,%s,%s)", (current_user,item[1],item[2],quantity,datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')))
             conn.commit()
             ite = item[1]
             price = item[2]
             quan = quantity
             total = item[2] * quantity
             receipt.append(f"{ite:<15}{quan:<6}{price:<8}{total:<8}")
-
+            cursor.execute("UPDATE sale SET Quantity = Quantity + %s,revenue = revenue + %s WHERE No = %s", (quan,quan * price, item[0],))
+            conn.commit()
         else:
             print("Invalid item or item is not available.")
 
@@ -339,6 +517,7 @@ def Balance():
     global current_user
     cursor.execute("SELECT Balance FROM userdata WHERE Email = %s", (current_user,))
     uk = cursor.fetchone()
+    conn.commit()
     print("💵Your Balance", uk[0])
     menu()
 
@@ -432,16 +611,21 @@ def rbpoint():
     elif point == 2:
         wpi = int(input("Enter the Point to Withdrawl:- "))
         if wpi <= uk[5]:
-
-            user[current_user]["point"] -= wpi
-            user[current_user]["balance"] += wpi
+            cursor.execute("UPDATE userdata SET Point = Point - %s, Balance = Balance + %s WHERE Email = %s", (wpi,wpi, current_user,))
+            conn.commit()
             print(f"Your RB Point:{wpi} \nConvert into rupees {wpi}₹ Added successfully")
-            choice8()
+            rbpoint()
         else:
             print("You don't have enough RB Point")
-            choice8()
+            rbpoint()
     elif point == 3:
         menu()
     else:
-        choice8()
+        rbpoint()
+
+#========== Logout ==========#
+def logout():
+    print("Thank You For Visiting 🫂")
+    start()
+
 start()
