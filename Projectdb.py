@@ -49,6 +49,10 @@ def signup():
     name = input("Enter the First Name:- ")
     lname = input("Enter the Last Name:- ")
     email = input("📧Enter the Valid Email Address:- ")
+    l = email[-10:]
+    if l != "@gmail.com" or 10 == len(email):
+        print("Ivalid Email Address")
+        signup()
 
     cursor.execute("SELECT * FROM userdata WHERE Email=%s", (email,))
     if cursor.fetchone():
@@ -161,7 +165,7 @@ def power():
     elif opinion == "4": alluser()
     elif opinion == "5": cpassword()
     elif opinion == "6": delete()
-    elif opinion == "7": pass
+    elif opinion == "7": complaint()
     elif opinion == "8": start()
     else:
         print("Invalid choice")
@@ -338,26 +342,42 @@ def complaint():
 def menu():
     print(""" Menu
         1. Canteen Menu
-        2. Deposit Money
-        3. Withdraw Money
-        4. Check Balance
-        5. Change Password
-        6. Transfer Money
+        2. Balance
+        3. Change Password
+        4. Transation History
+        5. Reward Point
+        6. Order History
         7. Complaint
-        8. Reward Point
-        9. Log Out
+        8. Log Out
         """)
 
     choice = input("Enter your choice No. :- ")
     if choice == "1": order()
-    elif choice == "2": deposit()
-    elif choice == "3": Withdrawn()
-    elif choice == "4": Balance()
-    elif choice == "5": Cpassword()
-    elif choice == "6": Tmoney()
+    elif choice == "2":
+        print("""
+        Choice
+        1. Deposit Money
+        2. Withdraw Money
+        3. Check Balance
+        4. Transfer Money
+        5. Exit""")
+        while True:
+            ch = input("Enter your choice No. :- ")
+            if ch == "1": deposit()
+            elif ch == "2": Withdrawn()
+            elif ch == "3": Balance()
+            elif ch == "4": Tmoney()
+            elif ch == "5":
+                menu()
+                break
+            else:
+                print("Invalid choice")
+    elif choice == "3": Cpassword()
+    elif choice == "4": trans()
+    elif choice == "5": rbpoint()
+    elif choice == "6": ohistory()
     elif choice == "7": complaint()
-    elif choice == "8": rbpoint()
-    elif choice == "9": logout()
+    elif choice == "8": logout()
     else:
         print("Invalid choice")
         menu()
@@ -388,7 +408,7 @@ def order():
     receipt.append("         🍽 Recess Bites Canteen 🍽")
     receipt.append("             Official Receipt")
     receipt.append("=" * 43)
-    receipt.append(f"Customer: {us[1],us[2]}")
+    receipt.append(f"Customer: {us[1]} {us[2]}")
     receipt.append(f"Date: {datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')}")
     receipt.append("-" * 43)
     receipt.append(f"{'Item':<15}{'Qty':<6}{'Price':<8}{'Total':<8}")
@@ -412,7 +432,8 @@ def order():
                 uk = cursor.fetchone()
                 conn.commit()
                 print("🧾Total Bill: ", bill)
-                print(f"You Earned RB Point: {bill * 0.1}")
+                if 100 <= bill:
+                    print(f"You Earned RB Point: {bill * 0.1}")
                 print("💵Available Balance: ", uk[0])
                 print("❤️", end="")
                 time.sleep(1)
@@ -428,14 +449,16 @@ def order():
                 print("✅ Order Placed Successfully!")
                 receipt.append("-" * 43)
                 receipt.append(f"{'Grand Total:':<27} ₹{bill}")
-                receipt.append(f"You Earned RB Point: {bill * 0.1}")
+                if 100 <= bill:
+                    receipt.append(f"You Earned RB Point: {bill * 0.1}")
                 receipt.append("=" * 43)
                 receipt.append("        Thank you! Visit Again 🙏")
                 receipt.append("=" * 43)
                 gojo = "\n".join(receipt)
 
-                cursor.execute("UPDATE userdata SET Point = Point + %s WHERE Email = %s", (bill * 0.1, current_user,))
-                conn.commit()
+                if 100 <= bill:
+                    cursor.execute("UPDATE userdata SET Point = Point + %s WHERE Email = %s", (bill * 0.1, current_user,))
+                    conn.commit()
 
                 yag = yagmail.SMTP("recessbites4@gmail.com", "lilg qaim bfgi qjmg")
                 yag.send(to=current_user, subject="Hello", contents=f"<pre>{gojo}</pre>")
@@ -487,6 +510,9 @@ def deposit():
         cursor.execute("SELECT Balance FROM userdata WHERE Email = %s", (current_user,))
         uk = cursor.fetchone()
         conn.commit()
+        cursor.execute("INSERT INTO transaction VALUES (%s, %s,%s)", (current_user,
+        datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'),+bal))
+        conn.commit()
         print(f"₹{bal} deposited successfully✅.\n New Balance: ₹{uk[0]}")
         menu()
 
@@ -505,6 +531,9 @@ def Withdrawn():
         conn.commit()
         cursor.execute("SELECT Balance FROM userdata WHERE Email = %s", (current_user,))
         uk = cursor.fetchone()
+        conn.commit()
+        cursor.execute("INSERT INTO transaction VALUES (%s, %s,%s)", (current_user,
+        datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'),-bal))
         conn.commit()
         print("💵Your Balance", uk[0])
         menu()
@@ -572,7 +601,12 @@ def Tmoney():
             print("Money successfully transferred✅")
             cursor.execute("UPDATE userdata SET Balance = Balance + %s WHERE Email = %s", (am,em,))
             conn.commit()
-
+            cursor.execute("INSERT INTO transaction VALUES (%s, %s,%s)", (current_user,
+            datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'),-am))
+            conn.commit()
+            cursor.execute("INSERT INTO transaction VALUES (%s, %s,%s)", (em,
+            datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'), +am))
+            conn.commit()
 
             yag = yagmail.SMTP("recessbites4@gmail.com", "lilg qaim bfgi qjmg")
             yag.send(to=current_user, subject="Hello", contents=f"You Transfered {am} to {em}")
@@ -622,6 +656,25 @@ def rbpoint():
         menu()
     else:
         rbpoint()
+
+#========== Order History ==========#
+def ohistory():
+    global current_user
+    cursor.execute("SELECT * FROM orders WHERE Email = %s", (current_user,))
+    row = cursor.fetchall()
+
+    for i in row:
+        print(f"| {i[4]:<12}| {i[1]:<15} | ₹{i[2]} |   {i[3]}   |")
+    menu()
+
+#========== Transaction history ==========#
+def trans():
+    global current_user
+    cursor.execute("SELECT * FROM transaction WHERE Email = %s", (current_user,))
+    row = cursor.fetchall()
+    for i in row:
+        print(f"| {i[1]:<15} | {i[2]}|")
+    menu()
 
 #========== Logout ==========#
 def logout():
